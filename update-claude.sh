@@ -65,8 +65,9 @@ detect_asar_version() {
 # Tries several methods, in order of reliability, to figure out which
 # version is currently installed — covers users of this script from a
 # previous run, users who installed the .deb via apt, users who installed
-# an AUR package, and users who (like the original case) extracted the
-# .deb by hand.
+# an AUR package, users who installed via an unofficial dnf/rpm repo on
+# Fedora/RHEL, and users who (like the original case) extracted the .deb
+# by hand.
 detect_installed_version() {
   local v pkg
 
@@ -96,7 +97,18 @@ detect_installed_version() {
     done
   fi
 
-  # 4) Version string found inside the manually extracted app
+  # 4) Package installed via rpm (Fedora/RHEL — official or unofficial dnf repos)
+  if command -v rpm &>/dev/null; then
+    for pkg in claude-desktop claude-desktop-unofficial claude-desktop-bin; do
+      v="$(rpm -q --qf '%{VERSION}\n' "$pkg" 2>/dev/null || true)"
+      if [[ -n "$v" && "$v" != *"not installed"* ]]; then
+        echo "$v"
+        return 0
+      fi
+    done
+  fi
+
+  # 5) Version string found inside the manually extracted app
   if [[ -d "$INSTALL_DIR" ]]; then
     v="$(detect_asar_version || true)"
     if [[ -n "$v" ]]; then
